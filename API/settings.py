@@ -104,7 +104,7 @@ DATABASES = {
     'default': dj_database_url.parse(
         os.getenv(
             "DATABASE_URL",
-            "postgresql://django:django@db:5432/django",
+            "postgresql://postgres:[5Qq!vT46cq3-X_f]@db.iqtbarcmhgaptsebglon.supabase.co:5432/postgres",
         ),
         conn_max_age=600,
     )
