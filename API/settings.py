@@ -102,14 +102,10 @@ WSGI_APPLICATION = 'API.wsgi.application'
 
 DATABASES = {
     'default': dj_database_url.parse(
-        os.getenv(
-            "DATABASE_URL",
-            "postgresql://postgres:[5Qq!vT46cq3-X_f]@db.iqtbarcmhgaptsebglon.supabase.co:5432/postgres",
-        ),
+        os.getenv("DATABASE_URL"),
         conn_max_age=600,
     )
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
