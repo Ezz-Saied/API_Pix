@@ -1,15 +1,20 @@
-from rest_framework import generics, status
-from rest_framework.response import Response
-from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework_simplejwt.tokens import RefreshToken
-from .models import User, EmailVerification
-from .serializers import UserRegistrationSerializer, UserSerializer, LoginSerializer
-from .gmail_service import send_email
+from django.urls import reverse
 from django.utils import timezone
-from .models import User, EmailVerification
-from .models import PasswordResetToken
-from .serializers import RequestPasswordResetSerializer, SetNewPasswordSerializer
+from rest_framework import generics, status
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.tokens import RefreshToken
+
+from .gmail_service import send_email
+from .models import EmailVerification, PasswordResetToken, User
+from .serializers import (
+    LoginSerializer,
+    RequestPasswordResetSerializer,
+    SetNewPasswordSerializer,
+    UserRegistrationSerializer,
+    UserSerializer,
+)
 
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
@@ -23,7 +28,9 @@ class RegisterView(generics.CreateAPIView):
 
         # create email verification record
         verify_obj = EmailVerification.objects.create(user=user)
-        verification_link = request.build_absolute_uri(f"/api/users/verify/{verify_obj.token}/")
+        verification_link = request.build_absolute_uri(
+            reverse("users:verify", args=[verify_obj.token])
+        )
 
         # send email
         body = f"""
@@ -124,7 +131,9 @@ class RequestPasswordResetView(APIView):
         # create reset token
         reset_token = PasswordResetToken.objects.create(user=user)
 
-        reset_link = f"http://localhost:8000/api/users/password/reset/verify/{reset_token.token}/"
+        reset_link = request.build_absolute_uri(
+            reverse("users:password_reset_verify", args=[reset_token.token])
+        )
 
         # send email via Gmail API
         send_email(

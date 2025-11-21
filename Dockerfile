@@ -23,9 +23,8 @@ RUN pipenv install --system --deploy
 # Copy the rest of the project
 COPY . /app/
 
+# Make entrypoint executable
 RUN chmod +x /app/entrypoint.sh
 
-EXPOSE 8000
-
+# Use entrypoint.sh to start the app
 ENTRYPOINT ["/app/entrypoint.sh"]
-CMD ["sh", "-c", "gunicorn API.wsgi:application --bind 0.0.0.0:${PORT:-8000}"]
