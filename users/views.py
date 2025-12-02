@@ -7,7 +7,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from .gmail_service import send_email
-from .models import EmailVerification, PasswordResetToken, User
+from .models import EmailVerification, PasswordResetOTP,User
 from .serializers import (
     LoginSerializer,
     RequestPasswordResetSerializer,
@@ -128,37 +128,31 @@ class RequestPasswordResetView(APIView):
 
         user = serializer.validated_data["user"]
 
-        # create reset token
-        reset_token = PasswordResetToken.objects.create(user=user)
+        # Generate OTP
+        otp_code = PasswordResetOTP.generate_otp()
+        
+        # Create OTP record
+        PasswordResetOTP.objects.create(user=user, otp=otp_code)
 
-        reset_link = request.build_absolute_uri(
-            reverse("users:password_reset_verify", args=[reset_token.token])
-        )
+        # Send OTP via email
+        email_body = f"""
+        <h2>Password Reset Request</h2>
+        <p>Your OTP for password reset is:</p>
+        <h1 style="color: #4CAF50; letter-spacing: 5px; font-size: 36px;">{otp_code}</h1>
+        <p>This OTP will expire in 15 minutes.</p>
+        <p>If you didn't request this, please ignore this email.</p>
+        """
 
-        # send email via Gmail API
         send_email(
             to=user.email,
-            subject="Reset Your Password",
-            body=f"Click the link to reset your password: {reset_link}"
+            subject="Your Password Reset OTP",
+            body=email_body,
+            html=True
         )
 
-        return Response({"detail": "Reset link sent to email"})
+        return Response({"detail": "OTP sent to your email"})
 
 
-class VerifyResetTokenView(APIView):
-    permission_classes = [AllowAny]
-
-    def get(self, request, token):
-        try:
-            reset_token = PasswordResetToken.objects.get(token=token)
-        except PasswordResetToken.DoesNotExist:
-            return Response({"detail": "Invalid or expired token"}, status=400)
-
-        if reset_token.is_expired():
-            reset_token.delete()
-            return Response({"detail": "Token expired"}, status=400)
-
-        return Response({"detail": "Token is valid"})
 
 
 class ResetPasswordView(APIView):

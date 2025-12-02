@@ -42,14 +42,43 @@ class EmailVerification(models.Model):
 def reset_password_expiry():
     return timezone.now() + timedelta(hours=1)
 
-class PasswordResetToken(models.Model):
+# class PasswordResetToken(models.Model):
+#     user = models.ForeignKey(User, on_delete=models.CASCADE)
+#     token = models.UUIDField(default=uuid.uuid4)
+#     created_at = models.DateTimeField(auto_now_add=True)
+#     expires_at = models.DateTimeField(default=reset_password_expiry)
+
+#     def __str__(self):
+#         return f"Reset token for {self.user.email}"
+
+#     def is_expired(self):
+#         return timezone.now() > self.expires_at
+
+
+def otp_expiry():
+    return timezone.now() + timedelta(minutes=15)
+
+
+class PasswordResetOTP(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    token = models.UUIDField(default=uuid.uuid4)
+    otp = models.CharField(max_length=6)
     created_at = models.DateTimeField(auto_now_add=True)
-    expires_at = models.DateTimeField(default=reset_password_expiry)
+    expires_at = models.DateTimeField(default=otp_expiry)
+    is_used = models.BooleanField(default=False)
+    attempt_count = models.IntegerField(default=0)
+
+    class Meta:
+        db_table = 'password_reset_otp'
+        verbose_name = 'Password Reset OTP'
+        verbose_name_plural = 'Password Reset OTPs'
 
     def __str__(self):
-        return f"Reset token for {self.user.email}"
+        return f"OTP for {self.user.email}"
 
     def is_expired(self):
         return timezone.now() > self.expires_at
+
+    @staticmethod
+    def generate_otp():
+        import random
+        return str(random.randint(100000, 999999))

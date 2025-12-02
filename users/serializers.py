@@ -1,7 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate
 from .models import User
-from .models import PasswordResetToken
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
@@ -82,29 +81,57 @@ class RequestPasswordResetSerializer(serializers.Serializer):
 
 
 class SetNewPasswordSerializer(serializers.Serializer):
-    token = serializers.UUIDField()
-    new_password = serializers.CharField()
+    email = serializers.EmailField()
+    otp = serializers.CharField(max_length=6, min_length=6)
+    new_password = serializers.CharField(min_length=8)
 
     def validate(self, attrs):
-        token = attrs.get("token")
+        email = attrs.get("email")
+        otp = attrs.get("otp")
         new_password = attrs.get("new_password")
 
-        try:
-            reset_token = PasswordResetToken.objects.get(token=token)
-        except PasswordResetToken.DoesNotExist:
-            raise serializers.ValidationError({"detail": "Invalid or expired token"})
+        # Import here to avoid circular import
+        from .models import PasswordResetOTP
 
-        # Check expiry
-        if reset_token.is_expired():
-            reset_token.delete()
-            raise serializers.ValidationError({"detail": "Token expired"})
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            raise serializers.ValidationError({"detail": "Invalid credentials"})
+
+        # Get the most recent unused OTP for this user
+        try:
+            reset_otp = PasswordResetOTP.objects.filter(
+                user=user, 
+                is_used=False
+            ).latest('created_at')
+        except PasswordResetOTP.DoesNotExist:
+            raise serializers.ValidationError({"detail": "No active OTP found. Please request a new one."})
+
+        # Check if OTP is expired
+        if reset_otp.is_expired():
+            reset_otp.delete()
+            raise serializers.ValidationError({"detail": "OTP has expired. Please request a new one."})
+
+        # Check if too many attempts
+        if reset_otp.attempt_count >= 5:
+            reset_otp.delete()
+            raise serializers.ValidationError({"detail": "Too many failed attempts. Please request a new OTP."})
+
+        # Verify OTP
+        if reset_otp.otp != otp:
+            reset_otp.attempt_count += 1
+            reset_otp.save()
+            remaining = 5 - reset_otp.attempt_count
+            raise serializers.ValidationError({
+                "detail": f"Invalid OTP. {remaining} attempt(s) remaining."
+            })
 
         # Set new password
-        user = reset_token.user
         user.set_password(new_password)
         user.save()
 
-        # Delete token after use
-        reset_token.delete()
+        # Mark OTP as used
+        reset_otp.is_used = True
+        reset_otp.save()
 
         return attrs
