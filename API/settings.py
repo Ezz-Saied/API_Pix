@@ -182,8 +182,8 @@ EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
 if EMAIL_HOST_USER and EMAIL_HOST_PASSWORD:
     EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
     EMAIL_HOST = "smtp-relay.brevo.com"  # Brevo (formerly Sendinblue)
-    EMAIL_PORT = 587
-    EMAIL_USE_TLS = True
+    EMAIL_PORT = 465  # Use SSL port instead of TLS
+    EMAIL_USE_SSL = True  # Use SSL instead of TLS
     EMAIL_TIMEOUT = 10  # Timeout after 10 seconds to prevent worker hangs
     DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 else:
