@@ -20,6 +20,9 @@ COPY Pipfile Pipfile.lock /app/
 RUN pip install --no-cache-dir pipenv
 RUN pipenv install --system --deploy
 
+# Cache busting - forces Docker to rebuild from here
+ARG CACHEBUST=1
+
 # Copy the rest of the project
 COPY . /app/
 
