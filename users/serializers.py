@@ -37,7 +37,6 @@ class VerifyEmailOTPSerializer(serializers.Serializer):
         email = attrs.get("email")
         otp = attrs.get("otp")
 
-        # Import here to avoid circular import
         from .models import EmailVerificationOTP
 
         try:
@@ -45,11 +44,9 @@ class VerifyEmailOTPSerializer(serializers.Serializer):
         except User.DoesNotExist:
             raise serializers.ValidationError({"detail": "Invalid email address"})
 
-        # Check if already verified
         if user.is_verified:
             raise serializers.ValidationError({"detail": "Email is already verified"})
 
-        # Get the most recent unused OTP for this user
         try:
             verification_otp = EmailVerificationOTP.objects.filter(
                 user=user,
@@ -58,17 +55,14 @@ class VerifyEmailOTPSerializer(serializers.Serializer):
         except EmailVerificationOTP.DoesNotExist:
             raise serializers.ValidationError({"detail": "No active OTP found. Please register again."})
 
-        # Check if OTP is expired
         if verification_otp.is_expired():
             verification_otp.delete()
             raise serializers.ValidationError({"detail": "OTP has expired. Please register again."})
 
-        # Check if too many attempts
         if verification_otp.attempt_count >= 5:
             verification_otp.delete()
             raise serializers.ValidationError({"detail": "Too many failed attempts. Please register again."})
 
-        # Verify OTP
         if verification_otp.otp != otp:
             verification_otp.attempt_count += 1
             verification_otp.save()
@@ -77,11 +71,9 @@ class VerifyEmailOTPSerializer(serializers.Serializer):
                 "detail": f"Invalid OTP. {remaining} attempt(s) remaining."
             })
 
-        # Mark user as verified
         user.is_verified = True
         user.save()
 
-        # Mark OTP as used
         verification_otp.is_used = True
         verification_otp.save()
 
@@ -149,7 +141,6 @@ class SetNewPasswordSerializer(serializers.Serializer):
         otp = attrs.get("otp")
         new_password = attrs.get("new_password")
 
-        # Import here to avoid circular import
         from .models import PasswordResetOTP
 
         try:
@@ -157,7 +148,6 @@ class SetNewPasswordSerializer(serializers.Serializer):
         except User.DoesNotExist:
             raise serializers.ValidationError({"detail": "Invalid credentials"})
 
-        # Get the most recent unused OTP for this user
         try:
             reset_otp = PasswordResetOTP.objects.filter(
                 user=user, 
@@ -166,17 +156,14 @@ class SetNewPasswordSerializer(serializers.Serializer):
         except PasswordResetOTP.DoesNotExist:
             raise serializers.ValidationError({"detail": "No active OTP found. Please request a new one."})
 
-        # Check if OTP is expired
         if reset_otp.is_expired():
             reset_otp.delete()
             raise serializers.ValidationError({"detail": "OTP has expired. Please request a new one."})
 
-        # Check if too many attempts
         if reset_otp.attempt_count >= 5:
             reset_otp.delete()
             raise serializers.ValidationError({"detail": "Too many failed attempts. Please request a new OTP."})
 
-        # Verify OTP
         if reset_otp.otp != otp:
             reset_otp.attempt_count += 1
             reset_otp.save()
@@ -185,11 +172,9 @@ class SetNewPasswordSerializer(serializers.Serializer):
                 "detail": f"Invalid OTP. {remaining} attempt(s) remaining."
             })
 
-        # Set new password
         user.set_password(new_password)
         user.save()
 
-        # Mark OTP as used
         reset_otp.is_used = True
         reset_otp.save()
 
