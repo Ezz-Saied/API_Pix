@@ -8,6 +8,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from django.core.mail import EmailMultiAlternatives
 from django.conf import settings
+import logging
 
 from .models import EmailVerificationOTP, PasswordResetOTP, User
 from .serializers import (
@@ -48,7 +49,13 @@ class RegisterView(generics.CreateAPIView):
             to=[user.email],
         )
         email.attach_alternative(email_body, "text/html")
-        email.send()
+        
+        try:
+            email.send()
+        except Exception as e:
+            logger = logging.getLogger(__name__)
+            logger.error(f"Failed to send verification email to {user.email}: {str(e)}")
+            # Continue anyway - user is registered, they can request a new OTP
         
         refresh = RefreshToken.for_user(user)
 
@@ -145,7 +152,13 @@ class RequestPasswordResetView(APIView):
         )
 
         email.attach_alternative(email_body, "text/html")
-        email.send()
+        
+        try:
+            email.send()
+        except Exception as e:
+            logger = logging.getLogger(__name__)
+            logger.error(f"Failed to send password reset email to {user.email}: {str(e)}")
+            # Continue anyway - OTP is created, they can check logs or try again
 
         return Response({"detail": "OTP sent to your email"})
 
