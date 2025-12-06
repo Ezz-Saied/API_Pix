@@ -184,6 +184,7 @@ if EMAIL_HOST_USER and EMAIL_HOST_PASSWORD:
     EMAIL_HOST = "smtp.gmail.com"
     EMAIL_PORT = 587
     EMAIL_USE_TLS = True
+    EMAIL_TIMEOUT = 10  # Timeout after 10 seconds to prevent worker hangs
     DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 else:
     # Fallback to console backend for development/testing
