@@ -29,6 +29,65 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = ('id', 'date_joined', 'is_verified')
 
 
+class VerifyEmailOTPSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    otp = serializers.CharField(max_length=6, min_length=6)
+
+    def validate(self, attrs):
+        email = attrs.get("email")
+        otp = attrs.get("otp")
+
+        # Import here to avoid circular import
+        from .models import EmailVerificationOTP
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            raise serializers.ValidationError({"detail": "Invalid email address"})
+
+        # Check if already verified
+        if user.is_verified:
+            raise serializers.ValidationError({"detail": "Email is already verified"})
+
+        # Get the most recent unused OTP for this user
+        try:
+            verification_otp = EmailVerificationOTP.objects.filter(
+                user=user,
+                is_used=False
+            ).latest('created_at')
+        except EmailVerificationOTP.DoesNotExist:
+            raise serializers.ValidationError({"detail": "No active OTP found. Please register again."})
+
+        # Check if OTP is expired
+        if verification_otp.is_expired():
+            verification_otp.delete()
+            raise serializers.ValidationError({"detail": "OTP has expired. Please register again."})
+
+        # Check if too many attempts
+        if verification_otp.attempt_count >= 5:
+            verification_otp.delete()
+            raise serializers.ValidationError({"detail": "Too many failed attempts. Please register again."})
+
+        # Verify OTP
+        if verification_otp.otp != otp:
+            verification_otp.attempt_count += 1
+            verification_otp.save()
+            remaining = 5 - verification_otp.attempt_count
+            raise serializers.ValidationError({
+                "detail": f"Invalid OTP. {remaining} attempt(s) remaining."
+            })
+
+        # Mark user as verified
+        user.is_verified = True
+        user.save()
+
+        # Mark OTP as used
+        verification_otp.is_used = True
+        verification_otp.save()
+
+        attrs['user'] = user
+        return attrs
+
 
 User = User
 

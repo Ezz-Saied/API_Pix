@@ -15,6 +15,8 @@ services:
       DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,0.0.0.0
       DJANGO_CSRF_TRUSTED_ORIGINS: http://localhost:8000,http://127.0.0.1:8000
       DATABASE_URL: postgresql://django:django@db:5432/django
+      EMAIL_HOST_USER: ${EMAIL_HOST_USER}
+      EMAIL_HOST_PASSWORD: ${EMAIL_HOST_PASSWORD}
     depends_on:
       - db
 
