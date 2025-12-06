@@ -16,6 +16,8 @@ cp .env.example .env
 | `DJANGO_ALLOWED_HOSTS` | Comma-separated domains (e.g. `your-service.onrender.com`) |
 | `DJANGO_CSRF_TRUSTED_ORIGINS` | Comma-separated origins with scheme (e.g. `https://your-service.onrender.com`) |
 | `DATABASE_URL` | `postgresql://USER:PASSWORD@HOST:PORT/DBNAME` |
+| `EMAIL_HOST_USER` | Gmail address for sending emails (e.g. `yourapp@gmail.com`) |
+| `EMAIL_HOST_PASSWORD` | Gmail App Password (16-character, NOT your regular password) |
 
 `docker-compose.yml` uses these values automatically for local development. In production, add the same variables through the provider's dashboard.
 
@@ -40,7 +42,15 @@ git push origin main
   - `DJANGO_ALLOWED_HOSTS=your-service.onrender.com`
   - `DJANGO_CSRF_TRUSTED_ORIGINS=https://your-service.onrender.com`
   - `DATABASE_URL=<value from PostgreSQL instance>`
+  - `EMAIL_HOST_USER=<your Gmail address>`
+  - `EMAIL_HOST_PASSWORD=<Gmail App Password>`
   - Any third-party API keys in use (Stripe, Google, etc.)
+
+**Note:** To get a Gmail App Password:
+1. Enable 2-Factor Authentication on your Google Account
+2. Go to Google Account → Security → 2-Step Verification → App Passwords
+3. Generate a new app password for "Mail"
+4. Use the generated 16-character password (not your regular Gmail password)
 
 ## 5. Run One-off Tasks
 From the service page, open the **Shell** and execute:
