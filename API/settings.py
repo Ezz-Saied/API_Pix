@@ -174,18 +174,16 @@ AUTHENTICATION_BACKENDS = [
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 
-# Email Configuration
-EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
-EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
+# Email Configuration - Use Brevo API instead of SMTP
+# Railway blocks SMTP ports, so we use HTTP API instead
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")  # Brevo API key
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")  # From email address
 
-# Use SMTP backend if email credentials are configured
-if EMAIL_HOST_USER and EMAIL_HOST_PASSWORD:
-    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-    EMAIL_HOST = "smtp-relay.brevo.com"  # Brevo (formerly Sendinblue)
-    EMAIL_PORT = 465  # Use SSL port instead of TLS
-    EMAIL_USE_SSL = True  # Use SSL instead of TLS
-    EMAIL_TIMEOUT = 10  # Timeout after 10 seconds to prevent worker hangs
-    DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+if EMAIL_HOST_PASSWORD:
+    # Use custom Brevo API backend (bypasses SMTP port blocking)
+    EMAIL_BACKEND = "users.brevo_backend.BrevoAPIBackend"
+    DEFAULT_FROM_EMAIL = EMAIL_HOST_USER or "noreply@pixelrevive.com"
+    EMAIL_TIMEOUT = 10
 else:
     # Fallback to console backend for development/testing
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
