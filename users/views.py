@@ -1,11 +1,9 @@
-from django.urls import reverse
-from django.utils import timezone
 from rest_framework import generics, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
-
+from django.contrib.auth import authenticate
 from django.core.mail import EmailMultiAlternatives
 from django.conf import settings
 import logging
@@ -172,3 +170,56 @@ class ResetPasswordView(APIView):
         serializer = SetNewPasswordSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         return Response({"detail": "Password has been reset successfully"})
+    
+    
+    
+    
+class GoogleContinueView(APIView):
+    def post(self, request):
+        email = request.data.get("email")
+        google_id = request.data.get("google_id")
+        password = request.data.get("password")
+        profile_picture = request.data.get("profile_picture")
+
+        if not email or not google_id:
+            return Response({"error": "email and google_id required"}, status=400)
+
+        try:
+            user = User.objects.get(email=email)
+
+            if user.google_id != google_id:
+                return Response({"error": "Google ID mismatch"}, status=401)
+
+            user_auth = authenticate(username=user.username, password=password)
+            if not user_auth:
+                return Response({"error": "Incorrect password"}, status=401)
+
+            if not user.is_verified:
+                user.is_verified = True
+                user.save()
+
+            return Response({
+                "message": "Login successful",
+                "user_id": user.id,
+                "verified": user.is_verified
+            })
+        
+        except User.DoesNotExist:
+            username = email.split("@")[0]
+
+            user = User.objects.create_user(
+                email=email,
+                username=username,
+                password=password,
+                google_id=google_id,
+                profile_picture=profile_picture
+            )
+
+            user.is_verified = True
+            user.save()
+
+            return Response({
+                "message": "User created and logged in",
+                "user_id": user.id,
+                "verified": True
+            }, status=201)

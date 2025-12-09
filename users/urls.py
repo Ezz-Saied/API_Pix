@@ -8,6 +8,7 @@ from .views import (
     RequestPasswordResetView,
     ResetPasswordView,
     VerifyEmailView,
+    GoogleContinueView,
 )
 
 app_name = "users"
@@ -20,4 +21,5 @@ urlpatterns = [
     path("profile/", ProfileView.as_view(), name="profile"),
     path("password/reset/request/", RequestPasswordResetView.as_view(), name="password_reset_request"),
     path("password/reset/", ResetPasswordView.as_view(), name="password_reset"),
+    path("continue-google/", GoogleContinueView.as_view(), name="continue_google"),
 ]

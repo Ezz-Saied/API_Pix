@@ -179,3 +179,12 @@ class SetNewPasswordSerializer(serializers.Serializer):
         reset_otp.save()
 
         return attrs
+    
+    
+from rest_framework import serializers
+
+class GoogleLoginSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    google_id = serializers.CharField()
+    password = serializers.CharField(write_only=True)
+    profile_picture = serializers.ImageField(required=False)

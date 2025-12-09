@@ -10,6 +10,8 @@ class User(AbstractUser):
     profile_picture = models.ImageField(upload_to='profiles/', null=True, blank=True)
     date_joined = models.DateTimeField(auto_now_add=True)
     is_verified = models.BooleanField(default=False)
+    google_id = models.CharField(max_length=255, null=True, blank=True)
+
     
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username']
