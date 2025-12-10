@@ -16,6 +16,7 @@ from .serializers import (
     UserRegistrationSerializer,
     UserSerializer,
     VerifyEmailOTPSerializer,
+    GoogleLoginSerializer,
 )
 
 class RegisterView(generics.CreateAPIView):
@@ -53,7 +54,6 @@ class RegisterView(generics.CreateAPIView):
         except Exception as e:
             logger = logging.getLogger(__name__)
             logger.error(f"Failed to send verification email to {user.email}: {str(e)}")
-            # Continue anyway - user is registered, they can request a new OTP
         
         refresh = RefreshToken.for_user(user)
 
@@ -156,7 +156,6 @@ class RequestPasswordResetView(APIView):
         except Exception as e:
             logger = logging.getLogger(__name__)
             logger.error(f"Failed to send password reset email to {user.email}: {str(e)}")
-            # Continue anyway - OTP is created, they can check logs or try again
 
         return Response({"detail": "OTP sent to your email"})
 
@@ -174,52 +173,85 @@ class ResetPasswordView(APIView):
     
     
     
-class GoogleContinueView(APIView):
-    def post(self, request):
-        email = request.data.get("email")
-        google_id = request.data.get("google_id")
-        password = request.data.get("password")
-        profile_picture = request.data.get("profile_picture")
 
-        if not email or not google_id:
-            return Response({"error": "email and google_id required"}, status=400)
+class GoogleContinueView(APIView):
+
+    def get_tokens_for_user(self, user):
+        refresh = RefreshToken.for_user(user)
+        return {
+            "access": str(refresh.access_token),
+            "refresh": str(refresh),
+        }
+
+    def post(self, request):
+        serializer = GoogleLoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        email = serializer.validated_data["email"]
+        google_id = serializer.validated_data["google_id"]
+        profile_picture = serializer.validated_data.get("profile_picture")
 
         try:
+            # CASE 1 — USER EXISTS
             user = User.objects.get(email=email)
 
-            if user.google_id != google_id:
-                return Response({"error": "Google ID mismatch"}, status=401)
+            # A) User already linked with Google → verify Google ID
+            if user.google_id:
+                if user.google_id != google_id:
+                    return Response({"error": "Google ID mismatch"}, status=401)
 
-            user_auth = authenticate(username=user.username, password=password)
-            if not user_auth:
-                return Response({"error": "Incorrect password"}, status=401)
+            # B) User exists but not linked → first Google login
+            else:
+                user.google_id = google_id
+                user.save()
 
+            # Update profile picture if sent
+            if profile_picture:
+                user.profile_picture = profile_picture
+                user.save()
+
+            # Make sure verified
             if not user.is_verified:
                 user.is_verified = True
                 user.save()
 
+            # Generate tokens
+            tokens = self.get_tokens_for_user(user)
+
             return Response({
                 "message": "Login successful",
                 "user_id": user.id,
-                "verified": user.is_verified
+                "verified": user.is_verified,
+                "access": tokens["access"],
+                "refresh": tokens["refresh"],
             })
-        
+
         except User.DoesNotExist:
+            # CASE 2 — NEW GOOGLE SIGNUP
             username = email.split("@")[0]
 
-            user = User.objects.create_user(
+            user = User.objects.create(
                 email=email,
                 username=username,
-                password=password,
                 google_id=google_id,
-                profile_picture=profile_picture
+                is_verified=True,
             )
 
-            user.is_verified = True
+            # No password for Google users
+            user.set_unusable_password()
+
+            if profile_picture:
+                user.profile_picture = profile_picture
+
             user.save()
+
+            # Generate tokens
+            tokens = self.get_tokens_for_user(user)
 
             return Response({
                 "message": "User created and logged in",
                 "user_id": user.id,
-                "verified": True
+                "verified": True,
+                "access": tokens["access"],
+                "refresh": tokens["refresh"],
             }, status=201)

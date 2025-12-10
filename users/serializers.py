@@ -181,10 +181,8 @@ class SetNewPasswordSerializer(serializers.Serializer):
         return attrs
     
     
-from rest_framework import serializers
 
 class GoogleLoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
     google_id = serializers.CharField()
-    password = serializers.CharField(write_only=True)
-    profile_picture = serializers.ImageField(required=False)
+    profile_picture = serializers.ImageField(required=False, allow_null=True)
